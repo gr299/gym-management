@@ -14,21 +14,25 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
 
 export default app;
 
-// Graceful shutdown handling
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+// Graceful shutdown handling (for standalone node servers)
+if (server) {
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}
 
 async function shutdown() {
   console.log('\nShutting down server gracefully...');
-  server.close(async () => {
-    try {
-      await pool.end();
-      console.log('Database pool closed.');
-      process.exit(0);
-    } catch (err) {
-      console.error('Error closing database pool:', err);
-      process.exit(1);
-    }
-  });
+  if (server) {
+    server.close(async () => {
+      try {
+        await pool.end();
+        console.log('Database pool closed.');
+        process.exit(0);
+      } catch (err) {
+        console.error('Error closing database pool:', err);
+        process.exit(1);
+      }
+    });
+  }
 }
 
