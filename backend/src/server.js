@@ -4,10 +4,15 @@ import { pool } from './config/db.js';
 
 const app = createApp();
 
-const server = app.listen(config.port, () => {
-  console.log(`[Gym Backend API] Server running on port ${config.port} (${config.env})`);
-  console.log(`[Gym Backend API] CORS origin allowed: ${config.clientOrigin}`);
-});
+let server;
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  server = app.listen(config.port, () => {
+    console.log(`[Gym Backend API] Server running on port ${config.port} (${config.env})`);
+    console.log(`[Gym Backend API] CORS origin allowed: ${config.clientOrigin}`);
+  });
+}
+
+export default app;
 
 // Graceful shutdown handling
 process.on('SIGTERM', shutdown);
