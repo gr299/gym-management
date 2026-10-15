@@ -61,3 +61,4 @@ SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 SELECT setval('subscriptions_id_seq', (SELECT MAX(id) FROM subscriptions));
 SELECT setval('payments_id_seq', (SELECT MAX(id) FROM payments));
 SELECT setval('equipment_id_seq', (SELECT MAX(id) FROM equipment));
+

@@ -271,3 +271,4 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 
 -- Seed initial settings
 INSERT INTO gym_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
