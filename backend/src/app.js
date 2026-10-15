@@ -48,8 +48,12 @@ export function createApp() {
   app.use('/api/auth/login', authLimiter);
 
   // Health check endpoint
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
+  app.get('/api/health', async (req, res) => {
+    try {
+      res.json({ status: 'ok', time: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
   });
 
   // REST API routes
