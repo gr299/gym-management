@@ -1,4 +1,16 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+function resolveApiBase() {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (
+    !envUrl ||
+    envUrl.includes('gym-management-api.vercel.app') ||
+    (typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app'))
+  ) {
+    return '/api';
+  }
+  return envUrl;
+}
+
+const API_BASE = resolveApiBase();
 
 class ApiClient {
   async request(endpoint, options = {}) {
