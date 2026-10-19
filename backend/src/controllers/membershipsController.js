@@ -28,7 +28,7 @@ export async function createPlan(req, res) {
   const existing = await one('SELECT id FROM membership_plans WHERE name = ?', [data.name]);
   if (existing) throw ApiError.conflict('A plan with this name already exists');
 
-  const [result] = await q(
+  const result = await q(
     `INSERT INTO membership_plans (name, description, duration_value, duration_unit, price, status)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [data.name, data.description || null, data.duration_value, data.duration_unit, data.price, data.status]
@@ -146,7 +146,7 @@ export async function createSubscription(req, res) {
   // Calculate strict expiration date according to section 6 requirements
   const endDate = calculateEndDate(startDate, plan.duration_value, plan.duration_unit);
 
-  const [result] = await q(
+  const result = await q(
     `INSERT INTO subscriptions (member_id, plan_id, start_date, end_date, price, status, payment_status, notes, created_by)
      VALUES (?, ?, ?, ?, ?, 'active', 'unpaid', ?, ?)`,
     [data.member_id, data.plan_id, startDate, endDate, plan.price, data.notes || null, req.user.id]
@@ -189,7 +189,7 @@ export async function renewSubscription(req, res) {
 
   const endDate = calculateEndDate(startDate, plan.duration_value, plan.duration_unit);
 
-  const [result] = await q(
+  const result = await q(
     `INSERT INTO subscriptions (member_id, plan_id, start_date, end_date, price, status, payment_status, renewed_from_id, created_by)
      VALUES (?, ?, ?, ?, ?, 'active', 'unpaid', ?, ?)`,
     [prev.member_id, prev.plan_id, startDate, endDate, plan.price, prev.id, req.user.id]
@@ -219,7 +219,7 @@ export async function cancelSubscription(req, res) {
   if (!sub) throw ApiError.notFound('Subscription not found');
 
   await q(
-    'UPDATE subscriptions SET status = "cancelled", cancelled_at = UTC_TIMESTAMP() WHERE id = ?',
+    "UPDATE subscriptions SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP WHERE id = ?",
     [id]
   );
 

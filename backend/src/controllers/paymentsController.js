@@ -117,7 +117,7 @@ export async function createPayment(req, res) {
 
     const [ins] = await conn.query(
       `INSERT INTO payments (receipt_no, member_id, subscription_id, amount, payment_date, method, reference, status, description, idempotency_key, recorded_by)
-       VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)`,
       [
         receiptNo,
         data.member_id,
@@ -144,7 +144,7 @@ export async function createPayment(req, res) {
     // If subscription is linked and payment is completed, update subscription payment_status
     if (data.subscription_id && data.status === 'completed') {
       const [paymentsForSub] = await conn.query(
-        'SELECT SUM(amount) as total_paid FROM payments WHERE subscription_id = ? AND status = "completed"',
+        "SELECT SUM(amount) as total_paid FROM payments WHERE subscription_id = ? AND status = 'completed'",
         [data.subscription_id]
       );
       const totalPaid = Number(paymentsForSub[0]?.total_paid || 0);
@@ -179,7 +179,7 @@ export async function refundPayment(req, res) {
 
   await withTransaction(async (conn) => {
     await conn.query(
-      'UPDATE payments SET status = "refunded", updated_by = ?, updated_at = UTC_TIMESTAMP() WHERE id = ?',
+      "UPDATE payments SET status = 'refunded', updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [req.user.id, id]
     );
 
@@ -193,7 +193,7 @@ export async function refundPayment(req, res) {
     // If subscription linked, recalculate subscription payment status
     if (payment.subscription_id) {
       const [paymentsForSub] = await conn.query(
-        'SELECT SUM(amount) as total_paid FROM payments WHERE subscription_id = ? AND status = "completed"',
+        "SELECT SUM(amount) as total_paid FROM payments WHERE subscription_id = ? AND status = 'completed'",
         [payment.subscription_id]
       );
       const totalPaid = Number(paymentsForSub[0]?.total_paid || 0);

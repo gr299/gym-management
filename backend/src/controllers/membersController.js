@@ -247,7 +247,7 @@ export async function deleteMember(req, res) {
   if (!existing) throw ApiError.notFound('Member not found');
 
   // Requirements 5 & 15: Safe deletion/archival to preserve historical payment and attendance records
-  await q('UPDATE members SET status = "archived", archived_at = UTC_TIMESTAMP() WHERE id = ?', [id]);
+  await q("UPDATE members SET status = 'archived', archived_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
 
   await logActivity(req, 'archive', 'member', id, `Archived member ${existing.member_code}`);
   ok(res, { message: `Member ${existing.member_code} archived successfully` });

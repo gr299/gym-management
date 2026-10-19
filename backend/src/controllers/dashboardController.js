@@ -24,12 +24,12 @@ export async function getDashboardData(req, res) {
     equipmentMaintenanceRow,
     monthlyRevenueRow,
   ] = await Promise.all([
-    one('SELECT COUNT(*) as count FROM members WHERE status != "archived"'),
-    one('SELECT COUNT(*) as count FROM members WHERE status = "active"'),
-    one('SELECT COUNT(*) as count FROM subscriptions WHERE status = "expired"'),
+    one("SELECT COUNT(*) as count FROM members WHERE status != 'archived'"),
+    one("SELECT COUNT(*) as count FROM members WHERE status = 'active'"),
+    one("SELECT COUNT(*) as count FROM subscriptions WHERE status = 'expired'"),
     one('SELECT COUNT(*) as count FROM attendance WHERE check_in >= ? AND check_in < ?', [todayStartUtc, todayEndUtc]),
-    one('SELECT COUNT(*) as count FROM trainers WHERE status = "active"'),
-    one('SELECT COUNT(*) as count, SUM(quantity) as units FROM equipment WHERE status != "retired"'),
+    one("SELECT COUNT(*) as count FROM trainers WHERE status = 'active'"),
+    one("SELECT COUNT(*) as count, SUM(quantity) as units FROM equipment WHERE status != 'retired'"),
     one(
       `SELECT COUNT(*) as count FROM equipment 
        WHERE status IN ('damaged', 'under_maintenance') 
@@ -61,7 +61,7 @@ export async function getDashboardData(req, res) {
     SELECT DATE_FORMAT(payment_date, '%Y-%m') as month,
            SUM(amount) as revenue
     FROM payments
-    WHERE status = 'completed' AND payment_date >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 6 MONTH)
+    WHERE status = 'completed' AND payment_date >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 6 MONTH)
     GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
     ORDER BY month ASC
   `);
@@ -71,7 +71,7 @@ export async function getDashboardData(req, res) {
     SELECT DATE(check_in) as date,
            COUNT(*) as count
     FROM attendance
-    WHERE check_in >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)
+    WHERE check_in >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 7 DAY)
     GROUP BY DATE(check_in)
     ORDER BY date ASC
   `);
@@ -82,7 +82,7 @@ export async function getDashboardData(req, res) {
     FROM subscriptions s
     JOIN membership_plans p ON s.plan_id = p.id
     WHERE s.status = 'active'
-    GROUP BY p.id
+    GROUP BY p.id, p.name
     ORDER BY count DESC
   `);
 

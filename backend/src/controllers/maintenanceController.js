@@ -156,6 +156,9 @@ export async function completeMaintenance(req, res) {
   const equipment = await one('SELECT * FROM equipment WHERE id = ?', [record.equipment_id]);
 
   await withTransaction(async (conn) => {
+    const completedNote = data.notes ? `[Completed] ${data.notes}` : '';
+    const mergedNotes = [record.notes, completedNote].filter(Boolean).join('\n') || null;
+
     await conn.query(
       `UPDATE maintenance_records SET
          status = 'completed',
@@ -163,14 +166,14 @@ export async function completeMaintenance(req, res) {
          cost = COALESCE(?, cost),
          condition_after = ?,
          technician = COALESCE(?, technician),
-         notes = CONCAT(COALESCE(notes, ''), IF(notes IS NULL, '', '\n'), ?)
+         notes = ?
        WHERE id = ?`,
       [
         data.completed_date,
         data.cost,
         data.condition_after,
         data.technician,
-        data.notes ? `[Completed] ${data.notes}` : '',
+        mergedNotes,
         id,
       ]
     );

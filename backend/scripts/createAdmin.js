@@ -87,7 +87,7 @@ export async function createAdminInteractive() {
 
   const hash = await bcrypt.hash(password, config.bcryptRounds);
   const result = await q(
-    'INSERT INTO users (full_name, email, password_hash, role, is_active) VALUES (?, ?, ?, "admin", 1)',
+    "INSERT INTO users (full_name, email, password_hash, role, is_active) VALUES (?, ?, ?, 'admin', TRUE)",
     [fullName, email, hash]
   );
 

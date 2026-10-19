@@ -52,7 +52,7 @@ export async function updateGymSettings(req, res) {
       data.currency.toUpperCase(),
       data.timezone,
       data.grace_period_days,
-      data.checkin_requires_payment ? 1 : 0,
+      Boolean(data.checkin_requires_payment),
       data.expiring_soon_days,
       data.default_session_minutes,
       data.receipt_footer || null,
@@ -100,7 +100,7 @@ export async function createUser(req, res) {
 
   const hash = await bcrypt.hash(data.password, config.bcryptRounds);
 
-  const [result] = await q(
+  const result = await q(
     `INSERT INTO users (full_name, email, password_hash, role, member_id, trainer_id, is_active)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -110,7 +110,7 @@ export async function createUser(req, res) {
       data.role,
       data.member_id || null,
       data.trainer_id || null,
-      data.is_active ? 1 : 0,
+      Boolean(data.is_active),
     ]
   );
 
@@ -148,23 +148,25 @@ export async function updateUser(req, res) {
     hash = await bcrypt.hash(data.password, config.bcryptRounds);
   }
 
+  const nextIsActive = data.is_active !== undefined ? Boolean(data.is_active) : Boolean(existing.is_active);
+  const bumpToken = hash !== null || !nextIsActive ? 1 : 0;
+
   await q(
     `UPDATE users SET
        full_name = COALESCE(?, full_name),
        email = COALESCE(?, email),
        role = COALESCE(?, role),
-       is_active = COALESCE(?, is_active),
+       is_active = ?,
        password_hash = COALESCE(?, password_hash),
-       token_version = CASE WHEN ? IS NOT NULL OR ? = 0 THEN token_version + 1 ELSE token_version END
+       token_version = token_version + ?
      WHERE id = ?`,
     [
       data.full_name,
       data.email,
       data.role,
-      data.is_active !== undefined ? (data.is_active ? 1 : 0) : existing.is_active,
+      nextIsActive,
       hash,
-      hash,
-      data.is_active !== undefined ? (data.is_active ? 1 : 0) : 1,
+      bumpToken,
       id,
     ]
   );

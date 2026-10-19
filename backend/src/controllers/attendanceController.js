@@ -4,7 +4,7 @@ import { validate, parseId } from '../utils/validate.js';
 import { getPagination, buildWhere, likeParam, paged } from '../utils/query.js';
 import { logActivity, ok } from '../utils/helpers.js';
 import { gymToday, getSettings, refreshExpiredSubscriptions } from '../utils/settings.js';
-import { localDateRangeUtc, dateInTimeZone } from '../utils/dates.js';
+import { localDateRangeUtc, dateInTimeZone, addDays } from '../utils/dates.js';
 
 export async function checkIn(req, res) {
   const data = validate(req.body, {
@@ -31,6 +31,7 @@ export async function checkIn(req, res) {
   await refreshExpiredSubscriptions();
   const settings = await getSettings();
   const today = await gymToday();
+  const minEndDate = addDays(today, -(settings.grace_period_days || 0));
 
   const sub = await one(
     `SELECT s.*, p.name as plan_name 
@@ -39,9 +40,9 @@ export async function checkIn(req, res) {
      WHERE s.member_id = ? 
        AND s.status = 'active'
        AND s.start_date <= ?
-       AND s.end_date >= DATE_SUB(?, INTERVAL ? DAY)
+       AND s.end_date >= ?
      ORDER BY s.end_date DESC LIMIT 1`,
-    [data.member_id, today, today, settings.grace_period_days || 0]
+    [data.member_id, today, minEndDate]
   );
 
   let warning = null;
@@ -52,9 +53,9 @@ export async function checkIn(req, res) {
   }
 
   // Insert check-in record (UTC timestamp)
-  const [result] = await q(
+  const result = await q(
     `INSERT INTO attendance (member_id, check_in, recorded_by, notes)
-     VALUES (?, UTC_TIMESTAMP(), ?, ?)`,
+     VALUES (?, CURRENT_TIMESTAMP, ?, ?)`,
     [data.member_id, req.user.id, data.notes || null]
   );
 
@@ -96,7 +97,7 @@ export async function checkOut(req, res) {
 
   if (!active) throw ApiError.notFound('No active check-in found to check out');
 
-  await q('UPDATE attendance SET check_out = UTC_TIMESTAMP() WHERE id = ?', [active.id]);
+  await q('UPDATE attendance SET check_out = CURRENT_TIMESTAMP WHERE id = ?', [active.id]);
 
   await logActivity(req, 'check_out', 'attendance', active.id, `Checked out attendance #${active.id}`);
 

@@ -13,7 +13,7 @@ function cookieOptions() {
   return {
     httpOnly: true,
     secure: config.isProd,
-    sameSite: 'strict',
+    sameSite: config.isProd ? 'none' : 'lax',
     path: '/',
     maxAge: 1000 * 60 * 60 * 8,
   };
@@ -40,7 +40,7 @@ export async function login(req, res) {
   if (!user || !valid) throw ApiError.unauthorized('Invalid email or password');
   if (!user.is_active) throw ApiError.forbidden('This account has been deactivated. Contact an administrator.');
 
-  await q('UPDATE users SET last_login_at = UTC_TIMESTAMP() WHERE id = ?', [user.id]);
+  await q('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
   const token = signToken(user);
   res.cookie(config.cookieName, token, cookieOptions());
   req.user = user;

@@ -1,4 +1,4 @@
-import { q, one, withTransaction } from '../config/db.js';
+import { q, one, withTransaction, isPg } from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 import { validate, parseId } from '../utils/validate.js';
 import { logActivity, ok } from '../utils/helpers.js';
@@ -42,7 +42,7 @@ export async function listWorkoutPlans(req, res) {
      LEFT JOIN trainers t ON wp.trainer_id = t.id
      LEFT JOIN workout_exercises we ON we.plan_id = wp.id
      ${where}
-     GROUP BY wp.id
+     GROUP BY wp.id, m.first_name, m.last_name, m.member_code, t.full_name
      ORDER BY wp.created_at DESC`,
     params
   );
@@ -238,12 +238,15 @@ export async function logWorkoutCompletion(req, res) {
     notes: { type: 'string', required: false, maxLength: 255 },
   });
 
-  await q(
-    `INSERT INTO workout_logs (plan_id, completed_on, notes, logged_by)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE notes = VALUES(notes), logged_by = VALUES(logged_by)`,
-    [planId, data.completed_on, data.notes || null, req.user.id]
-  );
+  const sql = isPg
+    ? `INSERT INTO workout_logs (plan_id, completed_on, notes, logged_by)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT (plan_id, completed_on) DO UPDATE SET notes = EXCLUDED.notes, logged_by = EXCLUDED.logged_by`
+    : `INSERT INTO workout_logs (plan_id, completed_on, notes, logged_by)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE notes = VALUES(notes), logged_by = VALUES(logged_by)`;
+
+  await q(sql, [planId, data.completed_on, data.notes || null, req.user.id]);
 
   await logActivity(req, 'log_completion', 'workout_plan', planId, `Logged workout on ${data.completed_on}`);
   ok(res, { message: 'Workout logged successfully', completed_on: data.completed_on });

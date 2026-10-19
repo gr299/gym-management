@@ -262,7 +262,7 @@ export async function deleteEquipment(req, res) {
   if (!existing) throw ApiError.notFound('Equipment not found');
 
   // Mark retired rather than hard deleting if records exist
-  await q('UPDATE equipment SET status = "retired" WHERE id = ?', [id]);
+  await q("UPDATE equipment SET status = 'retired' WHERE id = ?", [id]);
   await logActivity(req, 'retire', 'equipment', id, `Retired equipment ${existing.equipment_code}`);
   ok(res, { message: `Equipment ${existing.equipment_code} marked as retired` });
 }

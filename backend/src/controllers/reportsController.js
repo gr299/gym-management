@@ -1,6 +1,7 @@
 import { q, one } from '../config/db.js';
 import { ok } from '../utils/helpers.js';
 import { getSettings } from '../utils/settings.js';
+import { buildWhere } from '../utils/query.js';
 
 function toCsv(rows) {
   if (!rows || !rows.length) return '';
@@ -27,78 +28,98 @@ export async function getReports(req, res) {
   let title = 'Report';
 
   switch (type) {
-    case 'members':
+    case 'members': {
       title = 'Member Registration Report';
+      const { where, params } = buildWhere([
+        from_date ? ['m.registration_date >= ?', from_date] : null,
+        to_date ? ['m.registration_date <= ?', to_date] : null,
+      ]);
       data = await q(
         `SELECT m.member_code, m.first_name, m.last_name, m.email, m.phone, m.registration_date, m.status,
                 t.full_name as assigned_trainer
          FROM members m
          LEFT JOIN trainers t ON m.trainer_id = t.id
-         WHERE (? IS NULL OR m.registration_date >= ?)
-           AND (? IS NULL OR m.registration_date <= ?)
+         ${where}
          ORDER BY m.registration_date DESC`,
-        [from_date || null, from_date || null, to_date || null, to_date || null]
+        params
       );
       break;
+    }
 
-    case 'subscriptions':
+    case 'subscriptions': {
       title = 'Subscriptions and Membership Status Report';
+      const { where, params } = buildWhere([
+        from_date ? ['s.start_date >= ?', from_date] : null,
+        to_date ? ['s.start_date <= ?', to_date] : null,
+      ]);
       data = await q(
         `SELECT s.id, m.member_code, CONCAT(m.first_name, ' ', m.last_name) as member_name,
                 p.name as plan_name, s.start_date, s.end_date, s.price, s.status, s.payment_status
          FROM subscriptions s
          JOIN members m ON s.member_id = m.id
          JOIN membership_plans p ON s.plan_id = p.id
-         WHERE (? IS NULL OR s.start_date >= ?)
-           AND (? IS NULL OR s.start_date <= ?)
+         ${where}
          ORDER BY s.start_date DESC`,
-        [from_date || null, from_date || null, to_date || null, to_date || null]
+        params
       );
       break;
+    }
 
-    case 'attendance':
+    case 'attendance': {
       title = 'Attendance Report';
+      const { where, params } = buildWhere([
+        from_date ? ['DATE(a.check_in) >= ?', from_date] : null,
+        to_date ? ['DATE(a.check_in) <= ?', to_date] : null,
+      ]);
       data = await q(
         `SELECT a.id, m.member_code, CONCAT(m.first_name, ' ', m.last_name) as member_name,
                 a.check_in, a.check_out, a.notes
          FROM attendance a
          JOIN members m ON a.member_id = m.id
-         WHERE (? IS NULL OR DATE(a.check_in) >= ?)
-           AND (? IS NULL OR DATE(a.check_in) <= ?)
+         ${where}
          ORDER BY a.check_in DESC`,
-        [from_date || null, from_date || null, to_date || null, to_date || null]
+        params
       );
       break;
+    }
 
-    case 'payments':
+    case 'payments': {
       title = 'Payment Transactions Report';
+      const { where, params } = buildWhere([
+        from_date ? ['DATE(p.payment_date) >= ?', from_date] : null,
+        to_date ? ['DATE(p.payment_date) <= ?', to_date] : null,
+      ]);
       data = await q(
         `SELECT p.receipt_no, m.member_code, CONCAT(m.first_name, ' ', m.last_name) as member_name,
                 p.amount, p.payment_date, p.method, p.reference, p.status, p.description
          FROM payments p
          JOIN members m ON p.member_id = m.id
-         WHERE (? IS NULL OR DATE(p.payment_date) >= ?)
-           AND (? IS NULL OR DATE(p.payment_date) <= ?)
+         ${where}
          ORDER BY p.payment_date DESC`,
-        [from_date || null, from_date || null, to_date || null, to_date || null]
+        params
       );
       break;
+    }
 
-    case 'revenue':
+    case 'revenue': {
       title = 'Monthly Revenue Summary';
+      const { where, params } = buildWhere([
+        ["status = 'completed'"],
+        from_date ? ['DATE(payment_date) >= ?', from_date] : null,
+        to_date ? ['DATE(payment_date) <= ?', to_date] : null,
+      ]);
       data = await q(
         `SELECT DATE_FORMAT(payment_date, '%Y-%m') as month,
                 COUNT(id) as transaction_count,
                 SUM(amount) as total_revenue
          FROM payments
-         WHERE status = 'completed'
-           AND (? IS NULL OR DATE(payment_date) >= ?)
-           AND (? IS NULL OR DATE(payment_date) <= ?)
+         ${where}
          GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
          ORDER BY month DESC`,
-        [from_date || null, from_date || null, to_date || null, to_date || null]
+        params
       );
       break;
+    }
 
     case 'equipment':
       title = 'Equipment Inventory and Maintenance Report';
@@ -111,20 +132,24 @@ export async function getReports(req, res) {
       );
       break;
 
-    case 'maintenance':
+    case 'maintenance': {
       title = 'Maintenance History and Expenses';
+      const { where, params } = buildWhere([
+        from_date ? ['mr.reported_date >= ?', from_date] : null,
+        to_date ? ['mr.reported_date <= ?', to_date] : null,
+      ]);
       data = await q(
         `SELECT mr.id, e.equipment_code, e.name as equipment_name, mr.issue_description,
                 mr.maintenance_type, mr.priority, mr.reported_date, mr.completed_date,
                 mr.technician, mr.cost, mr.status
          FROM maintenance_records mr
          JOIN equipment e ON mr.equipment_id = e.id
-         WHERE (? IS NULL OR mr.reported_date >= ?)
-           AND (? IS NULL OR mr.reported_date <= ?)
+         ${where}
          ORDER BY mr.reported_date DESC`,
-        [from_date || null, from_date || null, to_date || null, to_date || null]
+        params
       );
       break;
+    }
 
     default:
       data = await q(`SELECT 'Please specify a valid report type' as notice`);

@@ -29,7 +29,7 @@ export async function listTrainers(req, res) {
             COUNT(DISTINCT CASE WHEN s.status = 'scheduled' THEN s.id END) as upcoming_sessions_count
      FROM trainers t
      LEFT JOIN members m ON m.trainer_id = t.id AND m.status = 'active'
-     LEFT JOIN training_sessions s ON s.trainer_id = t.id AND s.start_time >= UTC_TIMESTAMP()
+     LEFT JOIN training_sessions s ON s.trainer_id = t.id AND s.start_time >= CURRENT_TIMESTAMP
      ${where}
      GROUP BY t.id
      ORDER BY t.full_name ASC`,
@@ -56,7 +56,7 @@ export async function getTrainer(req, res) {
       `SELECT ts.*, m.member_code, m.first_name, m.last_name
        FROM training_sessions ts
        JOIN members m ON ts.member_id = m.id
-       WHERE ts.trainer_id = ? AND ts.start_time >= UTC_TIMESTAMP()
+       WHERE ts.trainer_id = ? AND ts.start_time >= CURRENT_TIMESTAMP
        ORDER BY ts.start_time ASC
        LIMIT 10`,
       [id]
@@ -232,7 +232,7 @@ export async function createSession(req, res) {
     throw ApiError.conflict('Trainer already has a scheduled session during this time slot.');
   }
 
-  const [result] = await q(
+  const result = await q(
     `INSERT INTO training_sessions (trainer_id, member_id, title, start_time, end_time, status, notes, created_by)
      VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?)`,
     [data.trainer_id, data.member_id, data.title, data.start_time, data.end_time, data.notes || null, req.user.id]
